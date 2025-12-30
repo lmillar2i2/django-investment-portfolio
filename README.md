@@ -196,11 +196,26 @@ docker-compose exec web python manage.py createsuperuser
 docker-compose restart
 ```
 
+## Demo
+
+### Vista Web
+Demostración de la interfaz web con gráficos interactivos generados a partir de los datos cargados desde Excel.
+
+![Demo](docs/demo.gif)
+
+### API REST
+Capturas reales de los endpoints principales solicitados en la prueba técnica.
+
+- Listado de portafolios
+- Evolución histórica de un portafolio
+
+![GET Portfolios](docs/api1.jpg)
+![POST Evolution](docs/api2.jpg)
+
 ## Troubleshooting
 
 **Error de conexión a la base de datos:**
 - Verifica que el contenedor `db` esté corriendo: `docker-compose ps`
-- Revisa las variables de entorno en `.env`
 
 **Error al cargar Excel:**
 - Verifica que el archivo tenga las hojas "weights" y "Precios"
