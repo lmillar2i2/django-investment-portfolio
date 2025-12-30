@@ -1,0 +1,192 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Evolución de Portafolio{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Evolución de Portafolio</h1>
+
+<!-- Formulario ETL -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Cargar Excel (ETL)</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="excel_file" class="form-label">Archivo datos.xlsx</label>
+                <input type="file" class="form-control" name="excel_file" id="excel_file" accept=".xlsx,.xls" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Cargar Excel</button>
+        </form>
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} mt-3" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>
+
+<!-- Formulario de gráficos -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Generar Gráficos</h5>
+    </div>
+    <div class="card-body">
+        <form method="get">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="portfolio_id" class="form-label">Portafolio</label>
+                    <select class="form-select" name="portfolio_id" id="portfolio_id" required>
+                        <option value="">Seleccione...</option>
+                        {% for portfolio in portfolios %}
+                            <option value="{{ portfolio.id }}" {% if selected_portfolio and selected_portfolio.id == portfolio.id %}selected{% endif %}>
+                                {{ portfolio.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="start_date" class="form-label">Fecha Inicio</label>
+                    <input type="date" class="form-control" name="start_date" id="start_date" value="{{ start_date }}" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="end_date" class="form-label">Fecha Fin</label>
+                    <input type="date" class="form-control" name="end_date" id="end_date" value="{{ end_date }}" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Generar Gráficos</button>
+        </form>
+    </div>
+</div>
+
+<!-- Gráficos -->
+{% if data %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Evolución del Valor Total (V_t)</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="valueChart" style="height: 400px;"></canvas>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Evolución de Pesos por Activo (w_{i,t})</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="weightsChart" style="height: 400px;"></canvas>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if data %}
+<script>
+    const data = {{ data_json|safe }};
+    
+    const dates = data.map(d => d.date);
+    const values = data.map(d => d.total_value);
+    
+    // Gráfico de valor
+    new Chart(document.getElementById('valueChart'), {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [{
+                label: 'Valor Total (V_t)',
+                data: values,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toLocaleString('es-ES', {maximumFractionDigits: 0});
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Gráfico de pesos
+    const assets = new Set();
+
+    // Expresión regular para detectar fechas formato YYYY-MM-DD
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+
+    data.forEach(d => {
+        d.weights.forEach(w => {
+            //Solo agregamos el activo si NO parece una fecha, modificación para evitar bug del gráfico
+            // y si tiene un nombre válido
+            if (w.asset && !datePattern.test(w.asset)) {
+                assets.add(w.asset);
+            }
+        });
+    });
+    const assetList = Array.from(assets).sort();
+    
+    const weightsData = {};
+    assetList.forEach(asset => {
+        weightsData[asset] = data.map(d => {
+            const weight = d.weights.find(w => w.asset === asset);
+            // Si no existe peso para ese día, asumimos 0
+            return weight ? weight.weight : 0;
+        });
+    });
+    
+    const colors = [
+        'rgba(255, 99, 132, 0.6)', 'rgba(54, 162, 235, 0.6)', 'rgba(255, 206, 86, 0.6)',
+        'rgba(75, 192, 192, 0.6)', 'rgba(153, 102, 255, 0.6)', 'rgba(255, 159, 64, 0.6)',
+        'rgba(199, 199, 199, 0.6)', 'rgba(83, 102, 255, 0.6)', 'rgba(255, 99, 255, 0.6)',
+        'rgba(99, 255, 132, 0.6)', 'rgba(255, 132, 99, 0.6)', 'rgba(132, 99, 255, 0.6)',
+        'rgba(99, 255, 255, 0.6)', 'rgba(255, 255, 99, 0.6)', 'rgba(255, 99, 132, 0.6)',
+        'rgba(99, 132, 255, 0.6)', 'rgba(132, 255, 99, 0.6)'
+    ];
+    
+    new Chart(document.getElementById('weightsChart'), {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: assetList.map((asset, idx) => ({
+                label: asset,
+                data: weightsData[asset],
+                borderColor: colors[idx % colors.length],
+                backgroundColor: colors[idx % colors.length],
+                fill: true
+            }))
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { stacked: true },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    max: 1,
+                    ticks: {
+                        callback: function(value) {
+                            return (value * 100).toFixed(1) + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}
