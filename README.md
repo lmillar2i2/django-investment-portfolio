@@ -201,7 +201,7 @@ docker-compose restart
 ### Vista Web
 Demostración de la interfaz web con gráficos interactivos generados a partir de los datos cargados desde Excel.
 
-![Demo](docs/demo.gif)
+![Demo](backend/docs/demo.gif)
 
 ### API REST
 Capturas reales de los endpoints principales solicitados en la prueba técnica.
@@ -209,8 +209,8 @@ Capturas reales de los endpoints principales solicitados en la prueba técnica.
 - Listado de portafolios
 - Evolución histórica de un portafolio
 
-![GET Portfolios](docs/api1.jpg)
-![POST Evolution](docs/api2.jpg)
+![GET Portfolios](backend/docs/api1.jpg)
+![POST Evolution](backend/docs/api2.jpg)
 
 ## Troubleshooting
 
